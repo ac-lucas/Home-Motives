@@ -37,49 +37,58 @@
     header {
       text-align: center;
       margin-bottom: 24px;
-      position: relative;
-    }
-
-    .plumbob-container {
       display: flex;
-      justify-content: center;
-      margin-bottom: 12px;
+      flex-direction: column;
+      align-items: center;
     }
 
-    .plumbob {
+    /* Plumbob as a solid 3D diamond (top and bottom triangles joined cleanly) */
+    .plumbob-container {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 28px;
+    }
+
+    .plumbob-top {
       width: 0;
       height: 0;
       border-left: 14px solid transparent;
       border-right: 14px solid transparent;
-      border-bottom: 36px solid var(--sims-green);
-      position: relative;
-      filter: drop-shadow(0 0 8px rgba(48, 217, 91, 0.6));
-      transition: all 0.3s ease;
+      border-bottom: 28px solid var(--sims-green);
+      transition: border-bottom-color 0.3s ease;
     }
 
-    .plumbob::after {
-      content: '';
-      position: absolute;
-      top: 36px;
-      left: -14px;
+    .plumbob-bottom {
       width: 0;
       height: 0;
       border-left: 14px solid transparent;
       border-right: 14px solid transparent;
-      border-top: 36px solid var(--sims-green);
-      border-bottom-color: inherit;
+      border-top: 28px solid var(--sims-green);
+      transition: border-top-color 0.3s ease;
     }
 
     h1 {
       font-size: 24px;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
-    #syncStatus {
-      font-size: 13px;
-      color: var(--subtext);
+    .status-container {
       margin-bottom: 16px;
+    }
+
+    #statusMessage {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    #connectionStatus {
+      font-size: 12px;
+      color: var(--subtext);
     }
 
     .top-bar {
@@ -267,10 +276,15 @@
 
   <header>
     <div class="plumbob-container">
-      <div id="plumbob" class="plumbob"></div>
+      <div id="plumbobTop" class="plumbob-top"></div>
+      <div id="plumbobBottom" class="plumbob-bottom"></div>
     </div>
     <h1>House Motives</h1>
-    <div id="syncStatus">🔒 Please Sign In</div>
+    
+    <div class="status-container">
+      <div id="statusMessage">Happy Home!</div>
+      <div id="connectionStatus">🔒 Please Sign In</div>
+    </div>
 
     <div class="top-bar">
       <button id="loginBtn" class="sim-btn" onclick="loginWithGoogle()">Sign in with Google</button>
@@ -327,7 +341,7 @@
     // Auth State Listener
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
-      const status = document.getElementById('syncStatus');
+      const connectionStatus = document.getElementById('connectionStatus');
       const loginBtn = document.getElementById('loginBtn');
       const addModuleContainer = document.getElementById('addModuleContainer');
       const toggleAddBtn = document.getElementById('toggleAddBtn');
@@ -336,7 +350,10 @@
       if (user) {
         if (loginBtn) loginBtn.style.display = 'none';
         
-        // Reveal toggle controls when signed in
+        // Dynamic user greeting line
+        const displayName = user.displayName || user.email.split('@')[0];
+        if (connectionStatus) connectionStatus.innerText = `Connected as ${displayName}`;
+
         if (toggleAddBtn) toggleAddBtn.style.display = 'inline-block';
         if (fabAddBtn) fabAddBtn.style.display = 'flex';
 
@@ -345,13 +362,12 @@
           render();
         }, (error) => {
           console.error("Firebase read error:", error);
-          if (status) status.innerText = '🔴 Access Denied: Account Unauthorized';
+          if (connectionStatus) connectionStatus.innerText = '🔴 Access Denied: Account Unauthorized';
         });
       } else {
         if (loginBtn) loginBtn.style.display = 'inline-block';
-        if (status) status.innerText = '🔒 Please Sign In';
+        if (connectionStatus) connectionStatus.innerText = '🔒 Please Sign In';
         
-        // Hide controls and form when signed out
         if (addModuleContainer) addModuleContainer.style.display = 'none';
         if (toggleAddBtn) toggleAddBtn.style.display = 'none';
         if (fabAddBtn) fabAddBtn.style.display = 'none';
@@ -385,9 +401,18 @@
       return Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
     }
 
+    function setPlumbobColor(color) {
+      const top = document.getElementById('plumbobTop');
+      const bottom = document.getElementById('plumbobBottom');
+      if (top && bottom) {
+        top.style.borderBottomColor = color;
+        bottom.style.borderTopColor = color;
+      }
+    }
+
     function render() {
       const list = document.getElementById('choreList');
-      const status = document.getElementById('syncStatus');
+      const statusMessage = document.getElementById('statusMessage');
       if (!list) return;
       list.innerHTML = '';
 
@@ -401,42 +426,29 @@
 
       choreArray.sort((a, b) => b.urgency - a.urgency);
 
-      // Update Header Status & Plumbob Visuals Based on Urgency
-      const plumbob = document.getElementById('plumbob');
-      const userName = currentUser ? (currentUser.displayName || currentUser.email) : '';
-
       if (choreArray.length === 0) {
-        if (status) status.innerText = `🟢 All Home Motives Satisfied (${userName})`;
-        if (plumbob) {
-          plumbob.style.borderBottomColor = 'var(--sims-green)';
-          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(48, 217, 91, 0.8))';
-        }
+        if (statusMessage) statusMessage.innerText = 'Happy Home!';
+        setPlumbobColor('var(--sims-green)');
         list.innerHTML = '<p style="color:var(--subtext); text-align:center;">All home motives satisfied! Click "+ Add Need" to create one.</p>';
         return;
       }
 
       const topUrgency = choreArray[0].urgency;
-      if (plumbob && status) {
+      if (statusMessage) {
         if (topUrgency >= 1.0) {
-          // 0% filled / Critical state
-          plumbob.style.borderBottomColor = 'var(--sims-red)';
-          plumbob.style.filter = 'drop-shadow(0 0 10px rgba(255, 69, 58, 0.9))';
-          status.innerText = `🔴 Critical Motives Desperately Needed (${userName})`;
+          statusMessage.innerText = 'Desperately Needs Attention';
+          setPlumbobColor('var(--sims-red)');
         } else if (topUrgency >= 0.7) {
-          // Warning state
-          plumbob.style.borderBottomColor = 'var(--sims-orange)';
-          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(255, 159, 10, 0.8))';
-          status.innerText = `🟠 Motives Running Low (${userName})`;
+          statusMessage.innerText = 'Needs Running Low';
+          setPlumbobColor('var(--sims-orange)');
         } else {
-          // Good state
-          plumbob.style.borderBottomColor = 'var(--sims-green)';
-          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(48, 217, 91, 0.8))';
-          status.innerText = `🟢 Home Motives Synced (${userName})`;
+          statusMessage.innerText = 'Happy Home!';
+          setPlumbobColor('var(--sims-green)');
         }
       }
 
       choreArray.forEach((chore) => {
-        // Enforce a minimum floor of 5% so a red sliver shows at 0%
+        // Enforce a floor of 5% width so red remains visible at 0%
         let calculatedPercent = Math.round((1 - (chore.urgency / 1.5)) * 100);
         let fillPercent = Math.max(5, Math.min(100, calculatedPercent));
         

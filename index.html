@@ -206,11 +206,13 @@
       overflow: hidden;
       margin-bottom: 12px;
       border: 1px solid var(--border-color);
+      position: relative;
     }
 
     .bar-fill {
       height: 100%;
       border-radius: 6px;
+      min-width: 6px;
       transition: width 0.4s ease, background-color 0.4s ease;
     }
 
@@ -249,7 +251,7 @@
       border: none;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
       cursor: pointer;
-      display: none; /* Controlled by Auth */
+      display: none;
       align-items: center;
       justify-content: center;
       z-index: 999;
@@ -320,9 +322,11 @@
     let chores = {};
     let editingChoreId = null;
     let isAddFormVisible = false;
+    let currentUser = null;
 
     // Auth State Listener
     onAuthStateChanged(auth, (user) => {
+      currentUser = user;
       const status = document.getElementById('syncStatus');
       const loginBtn = document.getElementById('loginBtn');
       const addModuleContainer = document.getElementById('addModuleContainer');
@@ -331,7 +335,6 @@
 
       if (user) {
         if (loginBtn) loginBtn.style.display = 'none';
-        if (status) status.innerText = `🟢 Home Motives Synced (${user.displayName || user.email})`;
         
         // Reveal toggle controls when signed in
         if (toggleAddBtn) toggleAddBtn.style.display = 'inline-block';
@@ -384,6 +387,7 @@
 
     function render() {
       const list = document.getElementById('choreList');
+      const status = document.getElementById('syncStatus');
       if (!list) return;
       list.innerHTML = '';
 
@@ -397,27 +401,44 @@
 
       choreArray.sort((a, b) => b.urgency - a.urgency);
 
+      // Update Header Status & Plumbob Visuals Based on Urgency
+      const plumbob = document.getElementById('plumbob');
+      const userName = currentUser ? (currentUser.displayName || currentUser.email) : '';
+
       if (choreArray.length === 0) {
+        if (status) status.innerText = `🟢 All Home Motives Satisfied (${userName})`;
+        if (plumbob) {
+          plumbob.style.borderBottomColor = 'var(--sims-green)';
+          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(48, 217, 91, 0.8))';
+        }
         list.innerHTML = '<p style="color:var(--subtext); text-align:center;">All home motives satisfied! Click "+ Add Need" to create one.</p>';
         return;
       }
 
-      const plumbob = document.getElementById('plumbob');
-      if (plumbob) {
-        if (choreArray[0].urgency >= 1.0) {
+      const topUrgency = choreArray[0].urgency;
+      if (plumbob && status) {
+        if (topUrgency >= 1.0) {
+          // 0% filled / Critical state
           plumbob.style.borderBottomColor = 'var(--sims-red)';
-          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(255, 69, 58, 0.8))';
-        } else if (choreArray[0].urgency >= 0.7) {
+          plumbob.style.filter = 'drop-shadow(0 0 10px rgba(255, 69, 58, 0.9))';
+          status.innerText = `🔴 Critical Motives Desperately Needed (${userName})`;
+        } else if (topUrgency >= 0.7) {
+          // Warning state
           plumbob.style.borderBottomColor = 'var(--sims-orange)';
           plumbob.style.filter = 'drop-shadow(0 0 8px rgba(255, 159, 10, 0.8))';
+          status.innerText = `🟠 Motives Running Low (${userName})`;
         } else {
+          // Good state
           plumbob.style.borderBottomColor = 'var(--sims-green)';
           plumbob.style.filter = 'drop-shadow(0 0 8px rgba(48, 217, 91, 0.8))';
+          status.innerText = `🟢 Home Motives Synced (${userName})`;
         }
       }
 
       choreArray.forEach((chore) => {
-        let fillPercent = Math.max(0, Math.min(100, Math.round((1 - (chore.urgency / 1.5)) * 100)));
+        // Enforce a minimum floor of 5% so a red sliver shows at 0%
+        let calculatedPercent = Math.round((1 - (chore.urgency / 1.5)) * 100);
+        let fillPercent = Math.max(5, Math.min(100, calculatedPercent));
         
         let color = 'var(--sims-green)';
         if (chore.urgency >= 1.0) color = 'var(--sims-red)';

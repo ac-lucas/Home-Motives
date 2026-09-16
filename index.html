@@ -173,6 +173,8 @@
         <h1>House Motives</h1>
     </div>
 
+    <button class="sim-btn" onclick="loginWithGoogle()">Sign in with Google</button>
+
     <div id="syncStatus" class="status-bar">Connecting to SimNet...</div>
     <div id="choreList"></div>
 
@@ -186,113 +188,142 @@
 
 <!-- Firebase SDKs -->
 <script type="module">
-  // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+  import { getDatabase, ref, onValue, push, update } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
-  // Your web app's Firebase configuration
   const firebaseConfig = {
     apiKey: "AIzaSyDqPjoCg0gYKmxBkF3-7eqYilmLdJqvGU8",
     authDomain: "house-motives.firebaseapp.com",
+    databaseURL: "https://house-motives-default-rtdb.firebaseio.com",
     projectId: "house-motives",
     storageBucket: "house-motives.firebasestorage.app",
     messagingSenderId: "338470965043",
     appId: "1:338470965043:web:30747acdb5095caace3846"
   };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const choresRef = db.ref('chores');
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  const choresRef = ref(db, 'chores');
 
-    let chores = {};
+  let chores = {};
 
-    function getDaysAgo(timestamp) {
-        return Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
-    }
+  // Attach auth listener
+  onAuthStateChanged(auth, (user) => {
+    const status = document.getElementById('syncStatus');
+    if (user) {
+      console.log("Logged in UID:", user.uid); // Copy this UID into your DB Security Rules!
+      
+      if (status) status.innerText = `🟢 Connected as ${user.displayName || user.email}`;
 
-    choresRef.on('value', (snapshot) => {
+      // Start listening to the DB
+      onValue(choresRef, (snapshot) => {
         chores = snapshot.val() || {};
-        document.getElementById('syncStatus').innerText = '🟢 Motives Synced';
         render();
+      }, (error) => {
+        console.error("Firebase read error:", error);
+        if (status) status.innerText = '🔴 Access Denied: Account Unauthorized';
+      });
+    } else {
+      if (status) status.innerText = '🔒 Please Sign In';
+    }
+  });
+
+  // Global trigger for a Google Login Button
+  window.loginWithGoogle = function() {
+    signInWithPopup(auth, provider).catch((error) => {
+      console.error("Sign-in failed:", error);
+      alert("Sign-in failed: " + error.message);
     });
+  };
 
-    function render() {
-        const list = document.getElementById('choreList');
-        list.innerHTML = '';
+  function getDaysAgo(timestamp) {
+    return Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
+  }
 
-        let choreArray = [];
-        for (let key in chores) {
-            let c = chores[key];
-            let daysAgo = getDaysAgo(c.lastDone);
-            let urgency = daysAgo / c.interval;
-            choreArray.push({ id: key, ...c, daysAgo, urgency });
-        }
+  function render() {
+    const list = document.getElementById('choreList');
+    if (!list) return;
+    list.innerHTML = '';
 
-        // Sort worst motive (highest urgency) to the top
-        choreArray.sort((a, b) => b.urgency - a.urgency);
-
-        if (choreArray.length === 0) {
-            list.innerHTML = '<p style="color:var(--subtext);">All motives satisfied! Add a need below.</p>';
-            return;
-        }
-
-        // Update overall Plumbob color based on worst motive
-        const plumbob = document.getElementById('plumbob');
-        if (choreArray[0].urgency >= 1.0) {
-            plumbob.style.borderBottomColor = 'var(--sims-red)';
-            plumbob.style.filter = 'drop-shadow(0 0 6px rgba(255, 69, 58, 0.8))';
-        } else if (choreArray[0].urgency >= 0.7) {
-            plumbob.style.borderBottomColor = 'var(--sims-orange)';
-            plumbob.style.filter = 'drop-shadow(0 0 6px rgba(255, 159, 10, 0.8))';
-        } else {
-            plumbob.style.borderBottomColor = 'var(--sims-green)';
-            plumbob.style.filter = 'drop-shadow(0 0 6px rgba(48, 209, 88, 0.8))';
-        }
-
-        choreArray.forEach((chore) => {
-            // Calculate Sim Need Bar (100% full = fresh, 0% = failing)
-            let fillPercent = Math.max(0, Math.min(100, Math.round((1 - (chore.urgency / 1.5)) * 100)));
-            
-            let color = 'var(--sims-green)';
-            if (chore.urgency >= 1.0) color = 'var(--sims-red)';
-            else if (chore.urgency >= 0.7) color = 'var(--sims-orange)';
-            else if (chore.urgency >= 0.4) color = 'var(--sims-yellow)';
-
-            list.innerHTML += `
-                <div class="motive-card">
-                    <div class="motive-header">
-                        <span class="motive-title">${chore.name}</span>
-                    </div>
-                    <div class="motive-meta">${chore.daysAgo}d ago • Goal: every ${chore.interval}d</div>
-                    <div class="bar-container">
-                        <div class="bar-fill" style="width: ${fillPercent}%; background-color: ${color};"></div>
-                    </div>
-                    <button class="sim-btn" onclick="fulfillMotive('${chore.id}')">Satisfy Need</button>
-                </div>
-            `;
-        });
+    let choreArray = [];
+    for (let key in chores) {
+      let c = chores[key];
+      let daysAgo = getDaysAgo(c.lastDone);
+      let urgency = daysAgo / c.interval;
+      choreArray.push({ id: key, ...c, daysAgo, urgency });
     }
 
-    function fulfillMotive(id) {
-        choresRef.child(id).update({ lastDone: Date.now() });
+    choreArray.sort((a, b) => b.urgency - a.urgency);
+
+    if (choreArray.length === 0) {
+      list.innerHTML = '<p style="color:var(--subtext); text-align:center;">All motives satisfied! Add a need below.</p>';
+      return;
     }
 
-    function addChore() {
-        const name = document.getElementById('choreName').value;
-        const interval = parseInt(document.getElementById('choreInterval').value);
-        const daysAgo = parseInt(document.getElementById('choreDaysAgo').value) || 0;
-
-        if (name && interval) {
-            const lastDone = Date.now() - (daysAgo * 86400000);
-            choresRef.push({ name, interval, lastDone });
-
-            document.getElementById('choreName').value = '';
-            document.getElementById('choreInterval').value = '';
-            document.getElementById('choreDaysAgo').value = '0';
-        }
+    const plumbob = document.getElementById('plumbob');
+    if (plumbob) {
+      if (choreArray[0].urgency >= 1.0) {
+        plumbob.style.borderBottomColor = 'var(--sims-red)';
+        plumbob.style.filter = 'drop-shadow(0 0 6px rgba(255, 69, 58, 0.8))';
+      } else if (choreArray[0].urgency >= 0.7) {
+        plumbob.style.borderBottomColor = 'var(--sims-orange)';
+        plumbob.style.filter = 'drop-shadow(0 0 6px rgba(255, 159, 10, 0.8))';
+      } else {
+        plumbob.style.borderBottomColor = 'var(--sims-green)';
+        plumbob.style.filter = 'drop-shadow(0 0 6px rgba(48, 209, 88, 0.8))';
+      }
     }
+
+    choreArray.forEach((chore) => {
+      let fillPercent = Math.max(0, Math.min(100, Math.round((1 - (chore.urgency / 1.5)) * 100)));
+      
+      let color = 'var(--sims-green)';
+      if (chore.urgency >= 1.0) color = 'var(--sims-red)';
+      else if (chore.urgency >= 0.7) color = 'var(--sims-orange)';
+      else if (chore.urgency >= 0.4) color = 'var(--sims-yellow)';
+
+      list.innerHTML += `
+        <div class="motive-card">
+          <div class="motive-header">
+            <span class="motive-title">${chore.name}</span>
+          </div>
+          <div class="motive-meta">${chore.daysAgo}d ago • Goal: every ${chore.interval}d</div>
+          <div class="bar-container">
+            <div class="bar-fill" style="width: ${fillPercent}%; background-color: ${color};"></div>
+          </div>
+          <button class="sim-btn" onclick="fulfillMotive('${chore.id}')">Satisfy Need</button>
+        </div>
+      `;
+    });
+  }
+
+  window.fulfillMotive = function(id) {
+    update(ref(db, `chores/${id}`), { lastDone: Date.now() });
+  };
+
+  window.addChore = function() {
+    const nameInput = document.getElementById('choreName');
+    const intervalInput = document.getElementById('choreInterval');
+    const daysAgoInput = document.getElementById('choreDaysAgo');
+
+    const name = nameInput.value.trim();
+    const interval = parseInt(intervalInput.value);
+    const daysAgo = parseInt(daysAgoInput.value) || 0;
+
+    if (name && interval) {
+      const lastDone = Date.now() - (daysAgo * 86400000);
+      push(choresRef, { name, interval, lastDone });
+
+      nameInput.value = '';
+      intervalInput.value = '';
+      daysAgoInput.value = '0';
+    } else {
+      alert('Please enter a motive name and decay period!');
+    }
+  };
 </script>
 </body>
 </html>

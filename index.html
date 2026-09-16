@@ -185,22 +185,24 @@
     </div>
 
 <!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
 
-<script>
-    // PASTE YOUR FIREBASE CONFIG HERE
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDqPjoCg0gYKmxBkF3-7eqYilmLdJqvGU8",
+    authDomain: "house-motives.firebaseapp.com",
+    projectId: "house-motives",
+    storageBucket: "house-motives.firebasestorage.app",
+    messagingSenderId: "338470965043",
+    appId: "1:338470965043:web:30747acdb5095caace3846"
+  };
 
-    firebase.initializeApp(firebaseConfig);
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
     const db = firebase.database();
     const choresRef = db.ref('chores');
 

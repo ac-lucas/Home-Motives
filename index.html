@@ -1,329 +1,546 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>House Motives</title>
-    <!-- Web App Capabilities for iOS -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <style>
-        :root {
-            --sims-green: #30d158;
-            --sims-yellow: #ffd60a;
-            --sims-orange: #ff9f0a;
-            --sims-red: #ff453a;
-            --panel-bg: #111a2e;
-            --card-bg: #1c2842;
-            --border-blue: #324b7a;
-            --text-light: #f0f4f8;
-            --subtext: #8aa0c4;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Motives Tracker</title>
+  <style>
+    :root {
+      --bg-color: #121820;
+      --card-bg: #1c2430;
+      --panel-bg: #253040;
+      --text-main: #f0f4f8;
+      --subtext: #8a99ad;
+      --border-color: #2d3b4e;
+      --sims-green: #30d95b;
+      --sims-yellow: #ffd60a;
+      --sims-orange: #ff9f0a;
+      --sims-red: #ff453a;
+      --sims-blue: #0a84ff;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--panel-bg);
-            color: var(--text-light);
-            margin: 0;
-            padding: 20px;
-            -webkit-tap-highlight-color: transparent;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-        .header-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 20px 16px 80px 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
 
-        /* Animated Plumbob Icon */
-        .plumbob {
-            width: 0;
-            height: 0;
-            border-left: 12px solid transparent;
-            border-right: 12px solid transparent;
-            border-bottom: 22px solid var(--sims-green);
-            position: relative;
-            filter: drop-shadow(0 0 6px rgba(48, 209, 88, 0.6));
-        }
-        .plumbob::after {
-            content: '';
-            position: absolute;
-            top: 22px;
-            left: -12px;
-            width: 0;
-            height: 0;
-            border-left: 12px solid transparent;
-            border-right: 12px solid transparent;
-            border-top: 22px solid var(--sims-green);
-        }
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+      position: relative;
+    }
 
-        h1 {
-            font-size: 1.8rem;
-            margin: 0;
-            letter-spacing: -0.5px;
-            color: #ffffff;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.4);
-        }
+    .plumbob-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
 
-        .status-bar {
-            font-size: 0.8rem;
-            color: var(--subtext);
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+    .plumbob {
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-bottom: 36px solid var(--sims-green);
+      position: relative;
+      filter: drop-shadow(0 0 8px rgba(48, 217, 91, 0.6));
+      transition: all 0.3s ease;
+    }
 
-        /* Motive Card Styling */
-        .motive-card {
-            background: var(--card-bg);
-            border: 2px solid var(--border-blue);
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 14px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
+    .plumbob::after {
+      content: '';
+      position: absolute;
+      top: 36px;
+      left: -14px;
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 36px solid var(--sims-green);
+      border-bottom-color: inherit;
+    }
 
-        .motive-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
 
-        .motive-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin: 0;
-        }
+    #syncStatus {
+      font-size: 13px;
+      color: var(--subtext);
+      margin-bottom: 16px;
+    }
 
-        .motive-meta {
-            font-size: 0.8rem;
-            color: var(--subtext);
-            margin-bottom: 10px;
-        }
+    .top-bar {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
 
-        /* Sim-style Need Bar */
-        .bar-container {
-            width: 100%;
-            height: 16px;
-            background-color: #0b111e;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid var(--border-blue);
-            margin-bottom: 12px;
-        }
+    /* Form Container */
+    #addModuleContainer {
+      display: none;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
 
-        .bar-fill {
-            height: 100%;
-            width: 100%;
-            transition: width 0.4s ease, background-color 0.4s ease;
-            border-radius: 6px;
-        }
+    #addModuleContainer h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: var(--text-main);
+    }
 
-        /* Action Button */
-        .sim-btn {
-            background: linear-gradient(180deg, #324b7a 0%, #1c2842 100%);
-            color: #ffffff;
-            border: 1px solid #4a6fa8;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            width: 100%;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .sim-btn:active {
-            transform: scale(0.98);
-            background: #1c2842;
-        }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
 
-        /* Add Form */
-        .add-form {
-            background: var(--card-bg);
-            border: 2px dashed var(--border-blue);
-            padding: 16px;
-            border-radius: 14px;
-            margin-top: 28px;
-        }
+    input[type="text"], input[type="number"] {
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      width: 100%;
+    }
 
-        .add-form h3 {
-            margin-top: 0;
-            font-size: 1.1rem;
-            color: var(--sims-green);
-        }
+    input:focus {
+      outline: none;
+      border-color: var(--sims-blue);
+    }
 
-        .add-form input {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border-blue);
-            background: #0b111e;
-            color: white;
-            font-size: 0.9rem;
-        }
-    </style>
+    /* Buttons */
+    .sim-btn {
+      background: var(--sims-blue);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .sim-btn:hover {
+      opacity: 0.9;
+    }
+
+    .sim-btn-secondary {
+      background: var(--panel-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .sim-btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    .sim-btn-danger {
+      background: var(--sims-red);
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    /* Cards */
+    .motive-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .motive-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .motive-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .motive-meta {
+      font-size: 12px;
+      color: var(--subtext);
+      margin-bottom: 10px;
+    }
+
+    .bar-container {
+      background: var(--bg-color);
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.4s ease, background-color 0.4s ease;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .card-actions button {
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+
+    .edit-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Floating Corner Plus Button */
+    .fab-add-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background-color: var(--sims-green);
+      color: #000;
+      font-size: 28px;
+      font-weight: bold;
+      border: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      display: none; /* Controlled by Auth */
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      transition: transform 0.2s ease;
+    }
+
+    .fab-add-btn:hover {
+      transform: scale(1.08);
+    }
+  </style>
 </head>
 <body>
 
-    <div class="header-container">
-        <div class="plumbob" id="plumbob"></div>
-        <h1>House Motives</h1>
+  <header>
+    <div class="plumbob-container">
+      <div id="plumbob" class="plumbob"></div>
     </div>
+    <h1>House Motives</h1>
+    <div id="syncStatus">🔒 Please Sign In</div>
 
-    <button class="sim-btn" onclick="loginWithGoogle()">Sign in with Google</button>
-
-    <div id="syncStatus" class="status-bar">Connecting to SimNet...</div>
-    <div id="choreList"></div>
-
-    <div class="add-form">
-        <h3>+ Add House Need</h3>
-        <input type="text" id="choreName" placeholder="Motive Name (e.g., Clean Bathroom)">
-        <input type="number" id="choreInterval" placeholder="Decay Period in Days (e.g., 10)">
-        <input type="number" id="choreDaysAgo" placeholder="Days since last satisfied (e.g., 2)" value="0">
-        <button class="sim-btn" onclick="addChore()">Add Motive</button>
+    <div class="top-bar">
+      <button id="loginBtn" class="sim-btn" onclick="loginWithGoogle()">Sign in with Google</button>
+      <button id="toggleAddBtn" class="sim-btn-secondary" style="display: none;" onclick="toggleAddModule()">+ Add Need</button>
     </div>
+  </header>
 
-<!-- Firebase SDKs -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getDatabase, ref, onValue, push, update } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  <!-- Add Need Module Panel (Hidden until signed in & toggled) -->
+  <div id="addModuleContainer">
+    <h3>Add House Need</h3>
+    <div class="form-group">
+      <input type="text" id="choreName" placeholder="Need Name (e.g., Clean Kitchen)" />
+      <input type="number" id="choreInterval" placeholder="Goal Interval in Days (e.g., 3)" min="1" />
+      <input type="number" id="choreDaysAgo" placeholder="Days since last done (default 0)" value="0" min="0" />
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="sim-btn" onclick="addChore()">Save Need</button>
+      <button class="sim-btn-secondary" onclick="toggleAddModule()">Cancel</button>
+    </div>
+  </div>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDqPjoCg0gYKmxBkF3-7eqYilmLdJqvGU8",
-    authDomain: "house-motives.firebaseapp.com",
-    databaseURL: "https://house-motives-default-rtdb.firebaseio.com",
-    projectId: "house-motives",
-    storageBucket: "house-motives.firebasestorage.app",
-    messagingSenderId: "338470965043",
-    appId: "1:338470965043:web:30747acdb5095caace3846"
-  };
+  <!-- Main Motive List -->
+  <div id="choreList"></div>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
-  const choresRef = ref(db, 'chores');
+  <!-- Fixed Corner Floating Action Plus Button -->
+  <button id="fabAddBtn" class="fab-add-btn" onclick="toggleAddModule()" title="Add Need">+</button>
 
-  let chores = {};
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
-  // Attach auth listener
-  onAuthStateChanged(auth, (user) => {
-    const status = document.getElementById('syncStatus');
-    if (user) {
-      console.log("Logged in UID:", user.uid); // Copy this UID into your DB Security Rules!
-      
-      if (status) status.innerText = `🟢 Connected as ${user.displayName || user.email}`;
+    const firebaseConfig = {
+      apiKey: "AIzaSyDqPjoCg0gYKmxBkF3-7eqYilmLdJqvGU8",
+      authDomain: "house-motives.firebaseapp.com",
+      databaseURL: "https://house-motives-default-rtdb.firebaseio.com",
+      projectId: "house-motives",
+      storageBucket: "house-motives.firebasestorage.app",
+      messagingSenderId: "338470965043",
+      appId: "1:338470965043:web:30747acdb5095caace3846"
+    };
 
-      // Start listening to the DB
-      onValue(choresRef, (snapshot) => {
-        chores = snapshot.val() || {};
-        render();
-      }, (error) => {
-        console.error("Firebase read error:", error);
-        if (status) status.innerText = '🔴 Access Denied: Account Unauthorized';
-      });
-    } else {
-      if (status) status.innerText = '🔒 Please Sign In';
-    }
-  });
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    const choresRef = ref(db, 'chores');
 
-  // Global trigger for a Google Login Button
-  window.loginWithGoogle = function() {
-    signInWithPopup(auth, provider).catch((error) => {
-      console.error("Sign-in failed:", error);
-      alert("Sign-in failed: " + error.message);
-    });
-  };
+    let chores = {};
+    let editingChoreId = null;
+    let isAddFormVisible = false;
 
-  function getDaysAgo(timestamp) {
-    return Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
-  }
+    // Auth State Listener
+    onAuthStateChanged(auth, (user) => {
+      const status = document.getElementById('syncStatus');
+      const loginBtn = document.getElementById('loginBtn');
+      const addModuleContainer = document.getElementById('addModuleContainer');
+      const toggleAddBtn = document.getElementById('toggleAddBtn');
+      const fabAddBtn = document.getElementById('fabAddBtn');
 
-  function render() {
-    const list = document.getElementById('choreList');
-    if (!list) return;
-    list.innerHTML = '';
+      if (user) {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (status) status.innerText = `🟢 Home Motives Synced (${user.displayName || user.email})`;
+        
+        // Reveal toggle controls when signed in
+        if (toggleAddBtn) toggleAddBtn.style.display = 'inline-block';
+        if (fabAddBtn) fabAddBtn.style.display = 'flex';
 
-    let choreArray = [];
-    for (let key in chores) {
-      let c = chores[key];
-      let daysAgo = getDaysAgo(c.lastDone);
-      let urgency = daysAgo / c.interval;
-      choreArray.push({ id: key, ...c, daysAgo, urgency });
-    }
-
-    choreArray.sort((a, b) => b.urgency - a.urgency);
-
-    if (choreArray.length === 0) {
-      list.innerHTML = '<p style="color:var(--subtext); text-align:center;">All motives satisfied! Add a need below.</p>';
-      return;
-    }
-
-    const plumbob = document.getElementById('plumbob');
-    if (plumbob) {
-      if (choreArray[0].urgency >= 1.0) {
-        plumbob.style.borderBottomColor = 'var(--sims-red)';
-        plumbob.style.filter = 'drop-shadow(0 0 6px rgba(255, 69, 58, 0.8))';
-      } else if (choreArray[0].urgency >= 0.7) {
-        plumbob.style.borderBottomColor = 'var(--sims-orange)';
-        plumbob.style.filter = 'drop-shadow(0 0 6px rgba(255, 159, 10, 0.8))';
+        onValue(choresRef, (snapshot) => {
+          chores = snapshot.val() || {};
+          render();
+        }, (error) => {
+          console.error("Firebase read error:", error);
+          if (status) status.innerText = '🔴 Access Denied: Account Unauthorized';
+        });
       } else {
-        plumbob.style.borderBottomColor = 'var(--sims-green)';
-        plumbob.style.filter = 'drop-shadow(0 0 6px rgba(48, 209, 88, 0.8))';
+        if (loginBtn) loginBtn.style.display = 'inline-block';
+        if (status) status.innerText = '🔒 Please Sign In';
+        
+        // Hide controls and form when signed out
+        if (addModuleContainer) addModuleContainer.style.display = 'none';
+        if (toggleAddBtn) toggleAddBtn.style.display = 'none';
+        if (fabAddBtn) fabAddBtn.style.display = 'none';
+        isAddFormVisible = false;
+
+        const list = document.getElementById('choreList');
+        if (list) list.innerHTML = '';
       }
-    }
-
-    choreArray.forEach((chore) => {
-      let fillPercent = Math.max(0, Math.min(100, Math.round((1 - (chore.urgency / 1.5)) * 100)));
-      
-      let color = 'var(--sims-green)';
-      if (chore.urgency >= 1.0) color = 'var(--sims-red)';
-      else if (chore.urgency >= 0.7) color = 'var(--sims-orange)';
-      else if (chore.urgency >= 0.4) color = 'var(--sims-yellow)';
-
-      list.innerHTML += `
-        <div class="motive-card">
-          <div class="motive-header">
-            <span class="motive-title">${chore.name}</span>
-          </div>
-          <div class="motive-meta">${chore.daysAgo}d ago • Goal: every ${chore.interval}d</div>
-          <div class="bar-container">
-            <div class="bar-fill" style="width: ${fillPercent}%; background-color: ${color};"></div>
-          </div>
-          <button class="sim-btn" onclick="fulfillMotive('${chore.id}')">Satisfy Need</button>
-        </div>
-      `;
     });
-  }
 
-  window.fulfillMotive = function(id) {
-    update(ref(db, `chores/${id}`), { lastDone: Date.now() });
-  };
+    window.loginWithGoogle = function() {
+      signInWithPopup(auth, provider).catch((error) => {
+        console.error("Sign-in failed:", error);
+        alert("Sign-in failed: " + error.message);
+      });
+    };
 
-  window.addChore = function() {
-    const nameInput = document.getElementById('choreName');
-    const intervalInput = document.getElementById('choreInterval');
-    const daysAgoInput = document.getElementById('choreDaysAgo');
+    window.toggleAddModule = function() {
+      const addModuleContainer = document.getElementById('addModuleContainer');
+      if (!addModuleContainer) return;
 
-    const name = nameInput.value.trim();
-    const interval = parseInt(intervalInput.value);
-    const daysAgo = parseInt(daysAgoInput.value) || 0;
+      isAddFormVisible = !isAddFormVisible;
+      addModuleContainer.style.display = isAddFormVisible ? 'block' : 'none';
 
-    if (name && interval) {
-      const lastDone = Date.now() - (daysAgo * 86400000);
-      push(choresRef, { name, interval, lastDone });
+      if (isAddFormVisible) {
+        addModuleContainer.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
 
-      nameInput.value = '';
-      intervalInput.value = '';
-      daysAgoInput.value = '0';
-    } else {
-      alert('Please enter a motive name and decay period!');
+    function getDaysAgo(timestamp) {
+      return Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24));
     }
-  };
-</script>
+
+    function render() {
+      const list = document.getElementById('choreList');
+      if (!list) return;
+      list.innerHTML = '';
+
+      let choreArray = [];
+      for (let key in chores) {
+        let c = chores[key];
+        let daysAgo = getDaysAgo(c.lastDone);
+        let urgency = daysAgo / c.interval;
+        choreArray.push({ id: key, ...c, daysAgo, urgency });
+      }
+
+      choreArray.sort((a, b) => b.urgency - a.urgency);
+
+      if (choreArray.length === 0) {
+        list.innerHTML = '<p style="color:var(--subtext); text-align:center;">All home motives satisfied! Click "+ Add Need" to create one.</p>';
+        return;
+      }
+
+      const plumbob = document.getElementById('plumbob');
+      if (plumbob) {
+        if (choreArray[0].urgency >= 1.0) {
+          plumbob.style.borderBottomColor = 'var(--sims-red)';
+          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(255, 69, 58, 0.8))';
+        } else if (choreArray[0].urgency >= 0.7) {
+          plumbob.style.borderBottomColor = 'var(--sims-orange)';
+          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(255, 159, 10, 0.8))';
+        } else {
+          plumbob.style.borderBottomColor = 'var(--sims-green)';
+          plumbob.style.filter = 'drop-shadow(0 0 8px rgba(48, 217, 91, 0.8))';
+        }
+      }
+
+      choreArray.forEach((chore) => {
+        let fillPercent = Math.max(0, Math.min(100, Math.round((1 - (chore.urgency / 1.5)) * 100)));
+        
+        let color = 'var(--sims-green)';
+        if (chore.urgency >= 1.0) color = 'var(--sims-red)';
+        else if (chore.urgency >= 0.7) color = 'var(--sims-orange)';
+        else if (chore.urgency >= 0.4) color = 'var(--sims-yellow)';
+
+        const isEditing = editingChoreId === chore.id;
+
+        let cardHTML = `
+          <div class="motive-card" id="card-${chore.id}">
+            <div class="motive-header">
+              <span class="motive-title">${chore.name}</span>
+            </div>
+            <div class="motive-meta">${chore.daysAgo}d ago • Goal: every ${chore.interval}d</div>
+            <div class="bar-container">
+              <div class="bar-fill" style="width: ${fillPercent}%; background-color: ${color};"></div>
+            </div>
+        `;
+
+        if (isEditing) {
+          cardHTML += `
+            <div class="edit-panel">
+              <label style="font-size: 12px; color: var(--subtext);">Need Name:</label>
+              <input type="text" id="edit-name-${chore.id}" value="${chore.name}" />
+              
+              <label style="font-size: 12px; color: var(--subtext);">Goal Interval (Days):</label>
+              <input type="number" id="edit-interval-${chore.id}" value="${chore.interval}" min="1" />
+              
+              <div class="card-actions" style="margin-top: 8px;">
+                <button class="sim-btn" onclick="saveChoreEdit('${chore.id}')">Save</button>
+                <button class="sim-btn-secondary" onclick="cancelEdit()">Cancel</button>
+                <button class="sim-btn-danger" onclick="deleteChore('${chore.id}')">Delete Need</button>
+              </div>
+            </div>
+          `;
+        } else {
+          cardHTML += `
+            <div class="card-actions">
+              <button class="sim-btn" onclick="fulfillMotive('${chore.id}')">Satisfy Need</button>
+              <button class="sim-btn-secondary" onclick="fulfillMotiveBackdated('${chore.id}')">Satisfy (Backdate)</button>
+              <button class="sim-btn-secondary" onclick="startEdit('${chore.id}')">Edit</button>
+            </div>
+          `;
+        }
+
+        cardHTML += `</div>`;
+        list.innerHTML += cardHTML;
+      });
+    }
+
+    window.fulfillMotive = function(id) {
+      update(ref(db, `chores/${id}`), { lastDone: Date.now() });
+    };
+
+    window.fulfillMotiveBackdated = function(id) {
+      const daysAgoStr = prompt("How many days ago did you actually complete this need?", "1");
+      if (daysAgoStr !== null) {
+        const daysAgo = parseInt(daysAgoStr, 10);
+        if (!isNaN(daysAgo) && daysAgo >= 0) {
+          const customLastDone = Date.now() - (daysAgo * 86400000);
+          update(ref(db, `chores/${id}`), { lastDone: customLastDone });
+        } else {
+          alert("Please enter a valid number of days.");
+        }
+      }
+    };
+
+    window.startEdit = function(id) {
+      editingChoreId = id;
+      render();
+    };
+
+    window.cancelEdit = function() {
+      editingChoreId = null;
+      render();
+    };
+
+    window.saveChoreEdit = function(id) {
+      const newName = document.getElementById(`edit-name-${id}`).value.trim();
+      const newInterval = parseInt(document.getElementById(`edit-interval-${id}`).value, 10);
+
+      if (newName && newInterval > 0) {
+        update(ref(db, `chores/${id}`), {
+          name: newName,
+          interval: newInterval
+        }).then(() => {
+          editingChoreId = null;
+        });
+      } else {
+        alert("Please enter a valid name and interval.");
+      }
+    };
+
+    window.deleteChore = function(id) {
+      if (confirm("Are you sure you want to delete this house need?")) {
+        remove(ref(db, `chores/${id}`)).then(() => {
+          editingChoreId = null;
+        });
+      }
+    };
+
+    window.addChore = function() {
+      const nameInput = document.getElementById('choreName');
+      const intervalInput = document.getElementById('choreInterval');
+      const daysAgoInput = document.getElementById('choreDaysAgo');
+
+      const name = nameInput.value.trim();
+      const interval = parseInt(intervalInput.value, 10);
+      const daysAgo = parseInt(daysAgoInput.value, 10) || 0;
+
+      if (name && interval > 0) {
+        const lastDone = Date.now() - (daysAgo * 86400000);
+        push(choresRef, { name, interval, lastDone });
+
+        nameInput.value = '';
+        intervalInput.value = '';
+        daysAgoInput.value = '0';
+        
+        window.toggleAddModule();
+      } else {
+        alert('Please enter a valid motive name and interval!');
+      }
+    };
+  </script>
 </body>
 </html>

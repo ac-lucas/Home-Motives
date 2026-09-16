@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>House Motives Tracker</title>
+  <title>Home Motives Tracker</title>
   <style>
     :root {
       --bg-color: #121820;
@@ -13,9 +13,10 @@
       --subtext: #8a99ad;
       --border-color: #2d3b4e;
       --sims-green: #30d95b;
-      --sims-yellow: #ffd60a;
+      --sims-yellow-green: #9ef01a;
       --sims-orange: #ff9f0a;
       --sims-red: #ff453a;
+      --sims-dark-red: #900c3f;
       --sims-blue: #0a84ff;
     }
 
@@ -42,7 +43,7 @@
       align-items: center;
     }
 
-    /* Plumbob as a solid 3D diamond (top and bottom triangles joined cleanly) */
+    /* Solid Vector Plumbob */
     .plumbob-container {
       margin-bottom: 16px;
       display: flex;
@@ -122,7 +123,12 @@
       margin-bottom: 12px;
     }
 
-    input[type="text"], input[type="number"] {
+    .form-group label {
+      font-size: 12px;
+      color: var(--subtext);
+    }
+
+    input[type="text"], input[type="number"], input[type="date"] {
       background: var(--bg-color);
       border: 1px solid var(--border-color);
       color: var(--text-main);
@@ -130,6 +136,7 @@
       border-radius: 6px;
       font-size: 14px;
       width: 100%;
+      color-scheme: dark;
     }
 
     input:focus {
@@ -279,7 +286,7 @@
       <div id="plumbobTop" class="plumbob-top"></div>
       <div id="plumbobBottom" class="plumbob-bottom"></div>
     </div>
-    <h1>House Motives</h1>
+    <h1>Home Motives</h1>
     
     <div class="status-container">
       <div id="statusMessage">Happy Home!</div>
@@ -292,13 +299,18 @@
     </div>
   </header>
 
-  <!-- Add Need Module Panel (Hidden until signed in & toggled) -->
+  <!-- Add Need Module Panel -->
   <div id="addModuleContainer">
     <h3>Add House Need</h3>
     <div class="form-group">
+      <label for="choreName">Need Name</label>
       <input type="text" id="choreName" placeholder="Need Name (e.g., Clean Kitchen)" />
+      
+      <label for="choreInterval">Goal Interval (Days)</label>
       <input type="number" id="choreInterval" placeholder="Goal Interval in Days (e.g., 3)" min="1" />
-      <input type="number" id="choreDaysAgo" placeholder="Days since last done (default 0)" value="0" min="0" />
+      
+      <label for="choreLastDoneDate">Last Completed Date</label>
+      <input type="date" id="choreLastDoneDate" />
     </div>
     <div style="display: flex; gap: 8px;">
       <button class="sim-btn" onclick="addChore()">Save Need</button>
@@ -309,7 +321,7 @@
   <!-- Main Motive List -->
   <div id="choreList"></div>
 
-  <!-- Fixed Corner Floating Action Plus Button -->
+  <!-- Floating Action Plus Button -->
   <button id="fabAddBtn" class="fab-add-btn" onclick="toggleAddModule()" title="Add Need">+</button>
 
   <script type="module">
@@ -336,11 +348,20 @@
     let chores = {};
     let editingChoreId = null;
     let isAddFormVisible = false;
-    let currentUser = null;
 
-    // Auth State Listener
+    // Helper: Format date as YYYY-MM-DD
+    function formatDateToInput(dateObj) {
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // Set default date input to today
+    document.getElementById('choreLastDoneDate').value = formatDateToInput(new Date());
+
+    // Auth Listener
     onAuthStateChanged(auth, (user) => {
-      currentUser = user;
       const connectionStatus = document.getElementById('connectionStatus');
       const loginBtn = document.getElementById('loginBtn');
       const addModuleContainer = document.getElementById('addModuleContainer');
@@ -350,7 +371,6 @@
       if (user) {
         if (loginBtn) loginBtn.style.display = 'none';
         
-        // Dynamic user greeting line
         const displayName = user.displayName || user.email.split('@')[0];
         if (connectionStatus) connectionStatus.innerText = `Connected as ${displayName}`;
 
@@ -393,6 +413,8 @@
       addModuleContainer.style.display = isAddFormVisible ? 'block' : 'none';
 
       if (isAddFormVisible) {
+        // Reset date to today on toggle open
+        document.getElementById('choreLastDoneDate').value = formatDateToInput(new Date());
         addModuleContainer.scrollIntoView({ behavior: 'smooth' });
       }
     };
@@ -411,124 +433,137 @@
     }
 
     function render() {
-  const list = document.getElementById('choreList');
-  const statusMessage = document.getElementById('statusMessage');
-  if (!list) return;
-  list.innerHTML = '';
+      const list = document.getElementById('choreList');
+      const statusMessage = document.getElementById('statusMessage');
+      if (!list) return;
+      list.innerHTML = '';
 
-  let choreArray = [];
-  let totalSatisfaction = 0;
-  let totalWeight = 0;
+      let choreArray = [];
+      let totalSatisfaction = 0;
+      let totalCount = 0;
 
-  for (let key in chores) {
-    let c = chores[key];
-    let daysAgo = getDaysAgo(c.lastDone);
-    let urgency = daysAgo / c.interval;
-    
-    // Convert urgency to a 0-100% satisfaction score (clamped)
-    let satisfaction = Math.max(0, Math.min(100, Math.round((1 - (urgency / 1.5)) * 100)));
-    
-    // Optional weight factor per chore (defaults to 1 if not set)
-    let weight = c.weight || 1; 
+      for (let key in chores) {
+        let c = chores[key];
+        let daysAgo = getDaysAgo(c.lastDone);
+        let urgency = daysAgo / c.interval;
 
-    totalSatisfaction += (satisfaction * weight);
-    totalWeight += weight;
+        // Linear decay: 100% full when done today, 0% full when urgency reaches 1.0 (due day)
+        let rawSatisfaction = Math.max(0, Math.round((1 - urgency) * 100));
 
-    choreArray.push({ id: key, ...c, daysAgo, urgency, satisfaction });
-  }
+        totalSatisfaction += rawSatisfaction;
+        totalCount++;
 
-  choreArray.sort((a, b) => b.urgency - a.urgency);
+        choreArray.push({ id: key, ...c, daysAgo, urgency, rawSatisfaction });
+      }
 
-  if (choreArray.length === 0) {
-    if (statusMessage) statusMessage.innerText = 'Happy Home!';
-    setPlumbobColor('var(--sims-green)');
-    list.innerHTML = '<p style="color:var(--subtext); text-align:center;">All home motives satisfied! Click "+ Add Need" to create one.</p>';
-    return;
-  }
+      choreArray.sort((a, b) => b.urgency - a.urgency);
 
-  // Calculate overall weighted average (0 - 100%)
-  const overallMood = Math.round(totalSatisfaction / totalWeight);
+      if (choreArray.length === 0) {
+        if (statusMessage) statusMessage.innerText = 'Happy Home!';
+        setPlumbobColor('var(--sims-green)');
+        list.innerHTML = '<p style="color:var(--subtext); text-align:center;">All home motives satisfied! Click "+ Add Need" to create one.</p>';
+        return;
+      }
 
-  // Map overall household score to status & Plumbob color
-  if (statusMessage) {
-    if (overallMood < 40) {
-      statusMessage.innerText = `Desperately Needs Attention (${overallMood}%)`;
-      setPlumbobColor('var(--sims-red)');
-    } else if (overallMood < 75) {
-      statusMessage.innerText = `Needs Running Low (${overallMood}%)`;
-      setPlumbobColor('var(--sims-orange)');
-    } else {
-      statusMessage.innerText = `Happy Home! (${overallMood}%)`;
-      setPlumbobColor('var(--sims-green)');
+      // Calculate weighted household average score (0-100%)
+      const householdMood = Math.round(totalSatisfaction / totalCount);
+
+      // Rebalanced Household Mood Scale
+      if (statusMessage) {
+        if (householdMood > 60) {
+          statusMessage.innerText = `Happy Home! (${householdMood}%)`;
+          setPlumbobColor('var(--sims-green)');
+        } else if (householdMood >= 40) {
+          statusMessage.innerText = `Needs are OK (${householdMood}%)`;
+          setPlumbobColor('var(--sims-yellow-green)');
+        } else if (householdMood >= 20) {
+          statusMessage.innerText = `Needs Running Low (${householdMood}%)`;
+          setPlumbobColor('var(--sims-orange)');
+        } else {
+          statusMessage.innerText = `Desperately Needs Attention (${householdMood}%)`;
+          setPlumbobColor('var(--sims-red)');
+        }
+      }
+
+      choreArray.forEach((chore) => {
+        // Linear visual fill calculation down to 0% at urgency 1.0
+        let visualPercent = Math.max(0, Math.round((1 - chore.urgency) * 100));
+        
+        // Ensure overdue/due tasks keep a minimum 5% floor
+        let displayWidth = Math.max(5, visualPercent);
+
+        // Color thresholding for individual bars
+        let barColor = 'var(--sims-green)';
+        if (chore.urgency >= 1.5) {
+          barColor = 'var(--sims-dark-red)'; // Extremely Overdue
+        } else if (chore.urgency >= 1.0) {
+          barColor = 'var(--sims-red)'; // Overdue / Due Now
+        } else if (chore.urgency >= 0.7) {
+          barColor = 'var(--sims-orange)';
+        } else if (chore.urgency >= 0.4) {
+          barColor = 'var(--sims-yellow-green)';
+        }
+
+        const isEditing = editingChoreId === chore.id;
+
+        let cardHTML = `
+          <div class="motive-card" id="card-${chore.id}">
+            <div class="motive-header">
+              <span class="motive-title">${chore.name}</span>
+            </div>
+            <div class="motive-meta">${chore.daysAgo}d ago • Goal: every ${chore.interval}d</div>
+            <div class="bar-container">
+              <div class="bar-fill" style="width: ${displayWidth}%; background-color: ${barColor};"></div>
+            </div>
+        `;
+
+        if (isEditing) {
+          cardHTML += `
+            <div class="edit-panel">
+              <label style="font-size: 12px; color: var(--subtext);">Need Name:</label>
+              <input type="text" id="edit-name-${chore.id}" value="${chore.name}" />
+              
+              <label style="font-size: 12px; color: var(--subtext);">Goal Interval (Days):</label>
+              <input type="number" id="edit-interval-${chore.id}" value="${chore.interval}" min="1" />
+              
+              <div class="card-actions" style="margin-top: 8px;">
+                <button class="sim-btn" onclick="saveChoreEdit('${chore.id}')">Save</button>
+                <button class="sim-btn-secondary" onclick="cancelEdit()">Cancel</button>
+                <button class="sim-btn-danger" onclick="deleteChore('${chore.id}')">Delete Need</button>
+              </div>
+            </div>
+          `;
+        } else {
+          cardHTML += `
+            <div class="card-actions">
+              <button class="sim-btn" onclick="fulfillMotive('${chore.id}')">Satisfy Need</button>
+              <button class="sim-btn-secondary" onclick="fulfillMotiveBackdated('${chore.id}')">Satisfy (Backdate)</button>
+              <button class="sim-btn-secondary" onclick="startEdit('${chore.id}')">Edit</button>
+            </div>
+          `;
+        }
+
+        cardHTML += `</div>`;
+        list.innerHTML += cardHTML;
+      });
     }
-  }
-
-  choreArray.forEach((chore) => {
-    // Keep minimum 5% visual floor for individual red bars
-    let fillPercent = Math.max(5, chore.satisfaction);
-    
-    let color = 'var(--sims-green)';
-    if (chore.urgency >= 1.0) color = 'var(--sims-red)';
-    else if (chore.urgency >= 0.7) color = 'var(--sims-orange)';
-    else if (chore.urgency >= 0.4) color = 'var(--sims-yellow)';
-
-    const isEditing = editingChoreId === chore.id;
-
-    let cardHTML = `
-      <div class="motive-card" id="card-${chore.id}">
-        <div class="motive-header">
-          <span class="motive-title">${chore.name}</span>
-        </div>
-        <div class="motive-meta">${chore.daysAgo}d ago • Goal: every ${chore.interval}d</div>
-        <div class="bar-container">
-          <div class="bar-fill" style="width: ${fillPercent}%; background-color: ${color};"></div>
-        </div>
-    `;
-
-    if (isEditing) {
-      cardHTML += `
-        <div class="edit-panel">
-          <label style="font-size: 12px; color: var(--subtext);">Need Name:</label>
-          <input type="text" id="edit-name-${chore.id}" value="${chore.name}" />
-          
-          <label style="font-size: 12px; color: var(--subtext);">Goal Interval (Days):</label>
-          <input type="number" id="edit-interval-${chore.id}" value="${chore.interval}" min="1" />
-          
-          <div class="card-actions" style="margin-top: 8px;">
-            <button class="sim-btn" onclick="saveChoreEdit('${chore.id}')">Save</button>
-            <button class="sim-btn-secondary" onclick="cancelEdit()">Cancel</button>
-            <button class="sim-btn-danger" onclick="deleteChore('${chore.id}')">Delete Need</button>
-          </div>
-        </div>
-      `;
-    } else {
-      cardHTML += `
-        <div class="card-actions">
-          <button class="sim-btn" onclick="fulfillMotive('${chore.id}')">Satisfy Need</button>
-          <button class="sim-btn-secondary" onclick="fulfillMotiveBackdated('${chore.id}')">Satisfy (Backdate)</button>
-          <button class="sim-btn-secondary" onclick="startEdit('${chore.id}')">Edit</button>
-        </div>
-      `;
-    }
-
-    cardHTML += `</div>`;
-    list.innerHTML += cardHTML;
-  });
-}
 
     window.fulfillMotive = function(id) {
       update(ref(db, `chores/${id}`), { lastDone: Date.now() });
     };
 
     window.fulfillMotiveBackdated = function(id) {
-      const daysAgoStr = prompt("How many days ago did you actually complete this need?", "1");
-      if (daysAgoStr !== null) {
-        const daysAgo = parseInt(daysAgoStr, 10);
-        if (!isNaN(daysAgo) && daysAgo >= 0) {
-          const customLastDone = Date.now() - (daysAgo * 86400000);
-          update(ref(db, `chores/${id}`), { lastDone: customLastDone });
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const defaultDateStr = formatDateToInput(yesterday);
+
+      const chosenDateStr = prompt("When did you complete this need? (YYYY-MM-DD):", defaultDateStr);
+      if (chosenDateStr) {
+        const selectedTimestamp = new Date(chosenDateStr + "T12:00:00").getTime();
+        if (!isNaN(selectedTimestamp)) {
+          update(ref(db, `chores/${id}`), { lastDone: selectedTimestamp });
         } else {
-          alert("Please enter a valid number of days.");
+          alert("Invalid date format. Please use YYYY-MM-DD.");
         }
       }
     };
@@ -570,23 +605,23 @@
     window.addChore = function() {
       const nameInput = document.getElementById('choreName');
       const intervalInput = document.getElementById('choreInterval');
-      const daysAgoInput = document.getElementById('choreDaysAgo');
+      const dateInput = document.getElementById('choreLastDoneDate');
 
       const name = nameInput.value.trim();
       const interval = parseInt(intervalInput.value, 10);
-      const daysAgo = parseInt(daysAgoInput.value, 10) || 0;
+      const chosenDateStr = dateInput.value;
 
-      if (name && interval > 0) {
-        const lastDone = Date.now() - (daysAgo * 86400000);
+      if (name && interval > 0 && chosenDateStr) {
+        const lastDone = new Date(chosenDateStr + "T12:00:00").getTime();
         push(choresRef, { name, interval, lastDone });
 
         nameInput.value = '';
         intervalInput.value = '';
-        daysAgoInput.value = '0';
+        dateInput.value = formatDateToInput(new Date());
         
         window.toggleAddModule();
       } else {
-        alert('Please enter a valid motive name and interval!');
+        alert('Please fill out all fields with valid information!');
       }
     };
   </script>
